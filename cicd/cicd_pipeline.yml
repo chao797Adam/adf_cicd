@@ -1,0 +1,86 @@
+trigger:
+- main
+
+pool:
+  vmImage: "ubuntu-latest"
+
+stages:
+- stage: BuildARMTemplate
+  displayName: "Build ARM Template"
+
+  variables:
+  - group: adfdev
+
+  jobs:
+  - job: BuildARM
+    displayName: "Build ARM"
+
+    steps:
+    - template: ci_build.yml
+      parameters:
+        DataFactory: $(DataFactory)
+        ResourceGroup: $(ResourceGroup)
+        SubscriptionId: $(SubscriptionId)
+
+# DEPLOY TO DEV
+- stage: DeployToDev
+  dependsOn: BuildARMTemplate
+  condition: succeeded()
+  displayName: "Deploy To DEV"
+  variables:
+  - group: adfdev 
+  jobs:
+  - job: DeployToDev
+    displayName: "Deploy To DEV"
+    steps:
+    - template: /cicd/cd_deploy.yml
+      parameters:
+        AzureResourceManagerConnection: 'adf-azure-service-connection'
+        DataFactory: $(DataFactory)
+        SubscriptionId: $(SubscriptionId)
+        ResourceGroup: $(ResourceGroup)
+        Environment: dev        
+
+# DEPLOY TO QA
+- stage: DeployToQA
+  dependsOn: BuildARMTemplate
+  condition: succeeded()
+  displayName: "Deploy To QA"
+  variables:
+  - group: qagroup 
+  jobs:
+  - job: DeployToQA
+    displayName: "Deploy To QA"
+    steps:
+    - template: /cicd/cd_deploy.yml 
+      parameters:
+        AzureResourceManagerConnection: 'adf-azure-service-connection' 
+        DataFactory: $(DataFactory)
+        SubscriptionId: $(SubscriptionId)
+        ResourceGroup: $(ResourceGroup)  
+        Environment: qa 
+
+
+- stage: DeployToPD
+  dependsOn: DeployToQA
+  condition: succeeded()
+  displayName: "Deploy To Production"
+  variables:
+  - group: prod
+  jobs:
+  - deployment: DeployToPD
+    displayName: "Deploy To Production"
+    environment: 'pd'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          
+          - template: /cicd/cd_deploy.yml 
+            parameters:
+              AzureResourceManagerConnection: 'adf-azure-service-connection'
+              DataFactory: $(DataFactory)
+              SubscriptionId: $(SubscriptionId)
+              ResourceGroup: $(ResourceGroup)
+              Environment: pd   

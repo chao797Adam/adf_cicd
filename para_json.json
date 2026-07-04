@@ -1,0 +1,12 @@
+{
+  "params": [
+    {
+      "source_url": "anshlambagit/Azure_CICD/refs/heads/main/bookings.csv",
+      "sink_file": "bookings.csv"
+    },
+    {
+      "source_url": "anshlambagit/Azure_CICD/refs/heads/main/passengers.csv",
+      "sink_file": "passengers.csv"
+    }
+  ]
+}
